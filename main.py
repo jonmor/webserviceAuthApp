@@ -1,8 +1,10 @@
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Request, Query, Body
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
 from pydantic import BaseModel
-from typing import Optional
+from datetime import datetime, timedelta
+from typing import Optional, Dict
+
 
 # Configuración del secreto y algoritmo para OAuth2
 SECRET_KEY = "mysecretkey"
@@ -13,7 +15,8 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 30
 fake_users_db = {
     "testuser": {
         "username": "testuser",
-        "password": "testpassword"
+        "password": "testpassword",
+        "roles": ["admin", "user"]
     }
 }
 
@@ -26,6 +29,7 @@ app = FastAPI()
 class UserCredentials(BaseModel):
     user: str
     password: str
+    roles: list
 
 class Token(BaseModel):
     access_token: str
@@ -34,31 +38,119 @@ class Token(BaseModel):
 def authenticate_user(username: str, password: str):
     user = fake_users_db.get(username)
     if not user or user["password"] != password:
-        return False
-    return True
+        return None
+    return user
 
-def create_access_token(data: dict, expires_delta: Optional[int] = None):
+def create_access_token(data: Dict[str, str], roles: list, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
     if expires_delta:
-        to_encode.update({"exp": expires_delta})
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire, "roles": roles})  # Agregar claim adicional
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 @app.post("/token", response_model=Token)
 async def login(form_data: OAuth2PasswordRequestForm = Depends()):
-    if not authenticate_user(form_data.username, form_data.password):
+    user = authenticate_user(form_data.username, form_data.password)
+    if not user:
         raise HTTPException(status_code=401, detail="Invalid username or password")
-    token = create_access_token(data={"sub": form_data.username})
-    return {"access_token": token, "token_type": "bearer"}
+    access_token = create_access_token(
+        data={"sub": user["username"]}, roles=user["roles"]
+    )
+    return {"access_token": access_token, "token_type": "bearer"}
 
-@app.post("/validate", response_model=bool)
+@app.post("/validate")
 async def validate_credentials(
-    credentials: UserCredentials, token: str = Depends(oauth2_scheme)
+    token: str = Depends(oauth2_scheme)
 ):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        #print(payload.items())
         username = payload.get("sub")
-        if not username or not authenticate_user(credentials.user, credentials.password):
-            raise HTTPException(status_code=403, detail="Invalid credentials")
-        return True
+        roles = payload.get("roles")
+        print(username,roles)
+        if username is None or roles is None:
+            raise HTTPException(status_code=403, detail="Invalid token")
+        return {"username": username, "roles": roles}
     except JWTError:
         raise HTTPException(status_code=403, detail="Invalid token")
+
+#Integracion de pruebas para PingGateway
+
+
+
+# Modelo para los datos en JSON (POST)
+class InputData(BaseModel):
+    idTransferencia: str
+    monto: int
+
+@app.get("/transferencia")
+@app.post("/transferencia")
+async def transferencia(
+    request: Request,
+        monto: Optional[int] = Query(None, description="Monto a recibir en la trasferencia"),
+        idTransferencia: Optional[str] = Query(None, description="ID de trasferencia"),
+        body: Optional[InputData] = Body(None)
+):
+    # Determinar si es GET o POST
+    method = request.method
+    if method == "POST" and body:
+        result = {
+            "status": "success",
+            "monto": body.monto
+        }
+
+    elif method == "POST" and monto and idTransferencia:
+        result = {
+            "status": "success",
+            "monto": body.monto
+        }
+
+    elif method == "GET" and monto and idTransferencia:
+        result = {
+            "status": "success",
+            "monto": monto
+        }
+
+    return result
+
+
+
+
+@app.get("/retiro")
+@app.post("/retiro")
+async def retiro(
+    request: Request,
+        monto: Optional[int] = Query(None, description="Monto a recibir en la trasferencia"),
+        idTransferencia: Optional[str] = Query(None, description="ID de trasferencia"),
+        body: Optional[InputData] = Body(None)
+):
+    # Determinar si es GET o POST
+    method = request.method
+    if method == "POST" and body:
+        result = {
+            "status": "success",
+            "monto": body.monto
+        }
+        return result
+
+    elif method == "POST" and monto and idTransferencia:
+        result = {
+            "status": "success",
+            "monto": monto
+        }
+        return result
+
+    elif method == "GET" and monto and idTransferencia:
+        result = {
+            "status": "success",
+            "monto": monto
+        }
+        return result
+    else:
+        result = {
+            "status": "error",
+            "message": "Faltan parámetros en la solicitud"
+        }
+        return result

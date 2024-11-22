@@ -1,0 +1,30 @@
+curl --location 'localhost:8000/retiro?monto=1000&idTransferencia=XSSSd'
+
+curl --location 'localhost:8000/retiro' --header 'Content-Type: application/json' --data '{"monto":"1000","idTransferencia":"XSSSd"}'
+
+curl --location --request POST 'localhost:8000/retiro?monto=1000&idTransferencia=XSSSd'
+
+
+
+
+#Auth
+
+
+curl --location 'localhost:8000/token' \
+--header 'Content-Type: application/x-www-form-urlencoded' \
+--data-urlencode 'username=testuser' \
+--data-urlencode 'password=testpassword'
+
+
+
+
+
+curl --location 'localhost:8000/validate' \
+--header 'Content-Type: application/json' \
+--header 'Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0dXNlciJ9.jJ7Da7p3p2pcNk-cdj5TbLuzXC-Mnnniqlk3N1jlfVA' \
+--data '{
+    "user": "testuser",
+    "password": "testpassword"
+}'
+
+
