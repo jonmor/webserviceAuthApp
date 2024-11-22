@@ -1,9 +1,12 @@
-from fastapi import FastAPI, Depends, HTTPException, Request, Query, Body
+from fastapi import FastAPI, Depends, HTTPException, Request, Query, Body, Path, Response
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.responses import RedirectResponse
+#import requests
 from jose import JWTError, jwt
 from pydantic import BaseModel
 from datetime import datetime, timedelta
 from typing import Optional, Dict
+
 
 
 # Configuración del secreto y algoritmo para OAuth2
@@ -22,6 +25,10 @@ fake_users_db = {
 
 # Dependencia para OAuth2
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+FORGEROCK_AM_URL = "https://openam-calasis-demo.forgeblocks.com/am"
+VALIDATE_TOKEN_ENDPOINT = f"{FORGEROCK_AM_URL}/json/sessions?_action=validate"
+COOKIE_NAME = "6eb8f5a1527322f"
 
 app = FastAPI()
 
@@ -85,8 +92,8 @@ class InputData(BaseModel):
     idTransferencia: str
     monto: int
 
-@app.get("/transferencia")
-@app.post("/transferencia")
+@app.get("/api/transferencia")
+@app.post("/api/transferencia")
 async def transferencia(
     request: Request,
         monto: Optional[int] = Query(None, description="Monto a recibir en la trasferencia"),
@@ -118,8 +125,8 @@ async def transferencia(
 
 
 
-@app.get("/retiro")
-@app.post("/retiro")
+@app.get("/api/retiro")
+@app.post("/api/retiro")
 async def retiro(
     request: Request,
         monto: Optional[int] = Query(None, description="Monto a recibir en la trasferencia"),
@@ -154,3 +161,30 @@ async def retiro(
             "message": "Faltan parámetros en la solicitud"
         }
         return result
+
+
+app.get("/api/{wildcard:path}/redirect")
+async def cdsso_redirect(token: str, app_redirect: str):
+    """
+    Endpoint para manejar CDSSO.
+    - token: El SSO token de ForgeRock.
+    - app_redirect: URL de la aplicación destino.
+    """
+    # Validar el token con ForgeRock AM
+    headers = {
+        "Content-Type": "application/json",
+        "iPlanetDirectoryPro": token  # Incluye el token en el encabezado
+    }
+
+    try:
+        response = Response.post(VALIDATE_TOKEN_ENDPOINT, headers=headers, timeout=10)
+        response_data = response.json()
+
+        if response.status_code != 200 or not response_data.get("valid"):
+            raise HTTPException(status_code=401, detail="Token inválido o sesión no válida")
+
+        # Token válido, redirigir al usuario a la app destino
+        return RedirectResponse(url=app_redirect)
+
+    except Response.exceptions.RequestException as e:
+        raise HTTPException(status_code=500, detail=f"Error al conectar con ForgeRock: {str(e)}")
