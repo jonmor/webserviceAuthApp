@@ -1,7 +1,11 @@
 Dependencias
 
 
-pip install fastapi uvicorn python-jose pydantic requests
+python3 -m venv env
+
+source env/bin/activate
+
+pip install fastapi uvicorn python-jose pydantic requests python-multipart
 
 
 
@@ -10,9 +14,9 @@ uvicorn main:app --reload
 
 uvicorn main:app --reload --host 0.0.0.0 --port 8001
 
-uvicorn main:app --host 0.0.0.0 --port 8000 > uvicorn.log 2>&1
+uvicorn main:app --host 0.0.0.0 --port 8000 > uvicorn-app-log.log 2>&1
 
-uvicorn main:app --host 0.0.0.0 --port 8000 | tee uvicorn.log
+uvicorn main:app --host 0.0.0.0 --port 8000 | tee uvicorn-app-log.log
 
 
 
@@ -92,11 +96,21 @@ tail -f /var/log/uvicorn_app_error.log
 ---------------------------------------
 
 
-curl --location 'localhost:8000/retiro?monto=1000&idTransferencia=XSSSd'
+curl --location 'localhost:8000/api/retiro?monto=1000&idTransferencia=XSSSd'
 
-curl --location 'localhost:8000/retiro' --header 'Content-Type: application/json' --data '{"monto":"1000","idTransferencia":"XSSSd"}'
+curl --location 'localhost:8000/api/retiro' --header 'Content-Type: application/json' --data '{"monto":"1000","idTransferencia":"XSSSd"}'
 
-curl --location --request POST 'localhost:8000/retiro?monto=1000&idTransferencia=XSSSd'
+curl --location --request POST 'localhost:8000/api/retiro?monto=1000&idTransferencia=XSSSd'
+
+
+
+
+
+curl --location 'http://18.218.138.120:8000/api/retiro' --header 'Content-Type: application/json' --data '{"monto":"1000","idTransferencia":"XSSSd"}'
+
+
+
+http://18.218.138.120:8000/api/retiro?monto=1000&idTransferencia=IXX221
 
 
 
