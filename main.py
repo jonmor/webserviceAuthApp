@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, Request, Query, Body, Path, Response
+from fastapi import FastAPI, Depends, HTTPException, Request, Query, Body, Path, Response, Header
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.responses import RedirectResponse
 #import requests
@@ -7,7 +7,9 @@ from pydantic import BaseModel
 from datetime import datetime, timedelta
 from typing import Optional, Dict
 
-
+from RequestCbacModel import RequestCbacModel
+from UserCredentialsModel import UserCredentials
+from TokenModel import Token
 
 # Configuración del secreto y algoritmo para OAuth2
 SECRET_KEY = "mysecretkey"
@@ -32,15 +34,6 @@ COOKIE_NAME = "6eb8f5a1527322f"
 
 app = FastAPI()
 
-# Modelo para la entrada y salida del servicio
-class UserCredentials(BaseModel):
-    user: str
-    password: str
-    roles: list
-
-class Token(BaseModel):
-    access_token: str
-    token_type: str
 
 def authenticate_user(username: str, password: str):
     user = fake_users_db.get(username)
@@ -188,3 +181,20 @@ async def cdsso_redirect(token: str, app_redirect: str):
 
     except Response.exceptions.RequestException as e:
         raise HTTPException(status_code=500, detail=f"Error al conectar con ForgeRock: {str(e)}")
+
+
+@app.post("/security/cbac/validate")
+async def cbac_validate(request: RequestCbacModel, api_key: Optional[str] = Header(None)):
+    # Validar el header 'api-key'
+    if not api_key or api_key is None:
+        raise HTTPException(status_code=403, detail="Invalid API Key")
+
+    # Respuesta en caso de éxito
+    print(api_key)
+    print(request.json())
+    return {
+        "data": {
+            "status": "SUCCESS",
+            "transactionId": "12345"
+        }
+    }
