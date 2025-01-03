@@ -1,15 +1,12 @@
-from fastapi import FastAPI, Depends, HTTPException, Request, Query, Body, Path, Response, Header
+from fastapi import FastAPI, Depends, HTTPException, Request, Query, Body, Response, Header
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from fastapi.responses import RedirectResponse
-#import requests
 from jose import JWTError, jwt
-from pydantic import BaseModel
 from datetime import datetime, timedelta
 from typing import Optional, Dict
 
-from RequestCbacModel import RequestCbacModel
-from UserCredentialsModel import UserCredentials
-from TokenModel import Token
+from util.TokenModel import Token
+from api.apiWS import api_router
+from security.secureWS import secure_router
 
 # Configuración del secreto y algoritmo para OAuth2
 SECRET_KEY = "mysecretkey"
@@ -33,7 +30,8 @@ VALIDATE_TOKEN_ENDPOINT = f"{FORGEROCK_AM_URL}/json/sessions?_action=validate"
 COOKIE_NAME = "6eb8f5a1527322f"
 
 app = FastAPI()
-
+app.include_router(api_router, prefix="/api")
+app.include_router(secure_router, prefix="/security")
 
 def authenticate_user(username: str, password: str):
     user = fake_users_db.get(username)
@@ -49,6 +47,11 @@ def create_access_token(data: Dict[str, str], roles: list, expires_delta: Option
         expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire, "roles": roles})  # Agregar claim adicional
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+
+@app.get("/")
+def read_root():
+    return {"message": "Welcome Security path"}
 
 @app.post("/token", response_model=Token)
 async def login(form_data: OAuth2PasswordRequestForm = Depends()):
@@ -76,125 +79,5 @@ async def validate_credentials(
     except JWTError:
         raise HTTPException(status_code=403, detail="Invalid token")
 
-#Integracion de pruebas para PingGateway
 
 
-
-# Modelo para los datos en JSON (POST)
-class InputData(BaseModel):
-    idTransferencia: str
-    monto: int
-
-@app.get("/api/transferencia")
-@app.post("/api/transferencia")
-async def transferencia(
-    request: Request,
-        monto: Optional[int] = Query(None, description="Monto a recibir en la trasferencia"),
-        idTransferencia: Optional[str] = Query(None, description="ID de trasferencia"),
-        body: Optional[InputData] = Body(None)
-):
-    # Determinar si es GET o POST
-    method = request.method
-    if method == "POST" and body:
-        result = {
-            "status": "success",
-            "monto": body.monto
-        }
-
-    elif method == "POST" and monto and idTransferencia:
-        result = {
-            "status": "success",
-            "monto": body.monto
-        }
-
-    elif method == "GET" and monto and idTransferencia:
-        result = {
-            "status": "success",
-            "monto": monto
-        }
-
-    return result
-
-
-
-
-@app.get("/api/retiro")
-@app.post("/api/retiro")
-async def retiro(
-    request: Request,
-        monto: Optional[int] = Query(None, description="Monto a recibir en la trasferencia"),
-        idTransferencia: Optional[str] = Query(None, description="ID de trasferencia"),
-        body: Optional[InputData] = Body(None)
-):
-    # Determinar si es GET o POST
-    method = request.method
-    if method == "POST" and body:
-        result = {
-            "status": "success",
-            "monto": body.monto
-        }
-        return result
-
-    elif method == "POST" and monto and idTransferencia:
-        result = {
-            "status": "success",
-            "monto": monto
-        }
-        return result
-
-    elif method == "GET" and monto and idTransferencia:
-        result = {
-            "status": "success",
-            "monto": monto
-        }
-        return result
-    else:
-        result = {
-            "status": "error",
-            "message": "Faltan parámetros en la solicitud"
-        }
-        return result
-
-
-app.get("/api/{wildcard:path}/redirect")
-async def cdsso_redirect(token: str, app_redirect: str):
-    """
-    Endpoint para manejar CDSSO.
-    - token: El SSO token de ForgeRock.
-    - app_redirect: URL de la aplicación destino.
-    """
-    # Validar el token con ForgeRock AM
-    headers = {
-        "Content-Type": "application/json",
-        "iPlanetDirectoryPro": token  # Incluye el token en el encabezado
-    }
-
-    try:
-        response = Response.post(VALIDATE_TOKEN_ENDPOINT, headers=headers, timeout=10)
-        response_data = response.json()
-
-        if response.status_code != 200 or not response_data.get("valid"):
-            raise HTTPException(status_code=401, detail="Token inválido o sesión no válida")
-
-        # Token válido, redirigir al usuario a la app destino
-        return RedirectResponse(url=app_redirect)
-
-    except Response.exceptions.RequestException as e:
-        raise HTTPException(status_code=500, detail=f"Error al conectar con ForgeRock: {str(e)}")
-
-
-@app.post("/security/cbac/validate")
-async def cbac_validate(request: RequestCbacModel, api_key: Optional[str] = Header(None)):
-    # Validar el header 'api-key'
-    if not api_key or api_key is None:
-        raise HTTPException(status_code=403, detail="Invalid API Key")
-
-    # Respuesta en caso de éxito
-    print(api_key)
-    print(request.json())
-    return {
-        "data": {
-            "status": "SUCCESS",
-            "transactionId": "12345"
-        }
-    }
