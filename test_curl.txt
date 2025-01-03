@@ -128,7 +128,19 @@ curl -X POST "http://127.0.0.1:8000/security/cbac/validate" \
   "transactionId": "111-111-111"
 }'
 
+ec2-18-218-138-120.us-east-2.compute.amazonaws.com
 
+
+
+curl -X POST "http://ec2-18-218-138-120.us-east-2.compute.amazonaws.com:8000/security/cbac/validate" \
+-H "Content-Type: application/json" \
+-H "api-key: 1231234654" \
+-d '{
+  "username": "user1",
+  "seed": "qwertyijhgfd",
+  "token": "ertyui",
+  "transactionId": "111-111-111"
+}'
 
 
 #Auth
