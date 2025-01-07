@@ -1,8 +1,10 @@
 from typing import Optional
 from fastapi import FastAPI, Depends, HTTPException, Request, Query, Body, Response, Header, APIRouter
 from pydantic import BaseModel
+import uvicorn
 
-secure_router = APIRouter()
+
+secure_router = FastAPI()
 
 
 class RequestCbacModel(BaseModel):
@@ -15,7 +17,7 @@ class RequestCbacModel(BaseModel):
 async def read_root():
     return {"message": "Welcome Security path"}
 
-@secure_router.post("/cbac/validate")
+@secure_router.post("/security/cbac/validate")
 async def cbac_validate(request: RequestCbacModel, x_api_key: Optional[str] = Header(None)):
     # Validar el header 'api-key'
     if not x_api_key or x_api_key is None:
@@ -30,3 +32,8 @@ async def cbac_validate(request: RequestCbacModel, x_api_key: Optional[str] = He
             "transactionId": "12345"
         }
     }
+
+if __name__ == "__main__":
+    config = uvicorn.Config("app2:secure_router", port=8001,ssl_certfile="certs/server.crt",ssl_keyfile="certs/server.key",ssl_ca_certs="certs/ca.crt", log_level="info")
+    server = uvicorn.Server(config)
+    server.run()

@@ -7,6 +7,7 @@ from typing import Optional, Dict
 from util.TokenModel import Token
 from api.apiWS import api_router
 from security.secureWS import secure_router
+import uvicorn
 
 # Configuración del secreto y algoritmo para OAuth2
 SECRET_KEY = "mysecretkey"
@@ -29,17 +30,17 @@ FORGEROCK_AM_URL = "https://openam-calasis-demo.forgeblocks.com/am"
 VALIDATE_TOKEN_ENDPOINT = f"{FORGEROCK_AM_URL}/json/sessions?_action=validate"
 COOKIE_NAME = "6eb8f5a1527322f"
 
-app = FastAPI()
-app.include_router(api_router, prefix="/api")
-app.include_router(secure_router, prefix="/security")
+app1 = FastAPI()
+app1.include_router(api_router, prefix="/api")
+app1.include_router(secure_router, prefix="/security")
 
-def authenticate_user(username: str, password: str):
+async def authenticate_user(username: str, password: str):
     user = fake_users_db.get(username)
     if not user or user["password"] != password:
         return None
     return user
 
-def create_access_token(data: Dict[str, str], roles: list, expires_delta: Optional[timedelta] = None):
+async def create_access_token(data: Dict[str, str], roles: list, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
@@ -49,11 +50,11 @@ def create_access_token(data: Dict[str, str], roles: list, expires_delta: Option
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 
-@app.get("/")
-def read_root():
+@app1.get("/")
+async def read_root():
     return {"message": "Welcome Security path"}
 
-@app.post("/token", response_model=Token)
+@app1.post("/token", response_model=Token)
 async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     user = authenticate_user(form_data.username, form_data.password)
     if not user:
@@ -63,7 +64,7 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     )
     return {"access_token": access_token, "token_type": "bearer"}
 
-@app.post("/validate")
+@app1.post("/validate")
 async def validate_credentials(
     token: str = Depends(oauth2_scheme)
 ):
@@ -81,3 +82,8 @@ async def validate_credentials(
 
 
 
+if __name__ == "__main__":
+    config = uvicorn.Config("app1:app1", port=8000)
+    #config = uvicorn.Config("app1:app1", port=8000, ssl_certfile="certs/server.crt", ssl_keyfile="certs/server.key",ssl_ca_certs="certs/ca.crt", log_level="info")
+    server = uvicorn.Server(config)
+    server.run()

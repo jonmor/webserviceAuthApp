@@ -13,7 +13,7 @@ VALIDATE_TOKEN_ENDPOINT = f"{FORGEROCK_AM_URL}/json/sessions?_action=validate"
 COOKIE_NAME = "6eb8f5a1527322f"
 
 @api_router.get("/")
-def read_root():
+async def read_root():
     return {"message": "Welcome API path"}
 
 @api_router.get("/transferencia")
