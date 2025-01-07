@@ -34,6 +34,6 @@ async def cbac_validate(request: RequestCbacModel, x_api_key: Optional[str] = He
     }
 
 if __name__ == "__main__":
-    config = uvicorn.Config("app2:secure_router", port=8001,ssl_certfile="certs/server.crt",ssl_keyfile="certs/server.key",ssl_ca_certs="certs/ca.crt", log_level="info")
+    config = uvicorn.Config("app2:secure_router", port=8443,ssl_certfile="certs/server.crt",ssl_keyfile="certs/server.key",ssl_ca_certs="certs/ca.crt", log_level="info")
     server = uvicorn.Server(config)
     server.run()
