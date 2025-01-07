@@ -83,7 +83,7 @@ async def validate_credentials(
 
 
 if __name__ == "__main__":
-    config = uvicorn.Config("app1:app1", port=9000)
+    config = uvicorn.Config("app1:app1", port=9000, host="0.0.0.0")
     #config = uvicorn.Config("app1:app1", port=8000, ssl_certfile="certs/server.crt", ssl_keyfile="certs/server.key",ssl_ca_certs="certs/ca.crt", log_level="info")
     server = uvicorn.Server(config)
     server.run()
